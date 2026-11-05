@@ -1,0 +1,19 @@
+{
+  "previewPort": 3000,
+  "healthPath": "/api/health",
+  "startCommand": "docker compose -f docker-compose.base44.yml up -d",
+  "secrets": [
+    {
+      "name": "AUTH_SECRET",
+      "description": "Better Auth session signing secret. Generate with `openssl rand -hex 32`.",
+      "requiredAtBoot": true,
+      "generatedForDevelopment": true
+    },
+    {
+      "name": "ENCRYPTION_SECRET",
+      "description": "Encryption key for saved AI providers and assistant conversations. Must be at least 32 characters.",
+      "requiredAtBoot": false,
+      "generatedForDevelopment": true
+    }
+  ]
+}

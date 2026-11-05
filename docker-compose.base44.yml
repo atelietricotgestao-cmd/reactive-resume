@@ -1,0 +1,85 @@
+name: reactive_resume_base44
+
+services:
+  app:
+    image: node:24-slim
+    working_dir: /app
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+      - PORT=3000
+      - SERVER_PORT=3001
+      - APP_URL=https://3000-${BASE44_PUBLIC_HOST_SUFFIX}
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/postgres
+      - REDIS_URL=redis://redis:6379
+      - STORAGE_BACKEND=local
+      - LOCAL_STORAGE_PATH=/app/data
+      - CHOKIDAR_USEPOLLING=true
+      - npm_config_store_dir=/pnpm/store
+      - BASE44_PREVIEW_MODE
+      - __VITE_ADDITIONAL_SERVER_ALLOWED_HOSTS
+    env_file:
+      - ./.env.base44-defaults
+      - /run/base44/app.env
+    volumes:
+      - .:/app
+      - pnpm_store:/pnpm/store
+    command:
+      - sh
+      - -c
+      - |
+        npm install -g pnpm@12.10.1
+        mkdir -p /app/data /pnpm/store
+        pnpm install --frozen-lockfile
+        exec pnpm dev
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:3000/api/health').then(r=>r.ok?process.exit(0):process.exit(1)).catch(()=>process.exit(1))"
+      start_period: 300s
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    restart: on-failure
+
+  postgres:
+    image: postgres:latest
+    restart: on-failure
+    environment:
+      - POSTGRES_DB=postgres
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    volumes:
+      - postgres_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "postgres", "-d", "postgres"]
+      start_period: 10s
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:latest
+    restart: on-failure
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      start_period: 5s
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
+  redis_data:
+  pnpm_store:
